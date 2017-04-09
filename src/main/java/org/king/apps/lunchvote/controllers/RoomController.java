@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.king.apps.lunchvote.models.Room;
+import org.king.apps.lunchvote.models.User;
 import org.king.apps.lunchvote.singletons.RoomStore;
 
 public class RoomController {
@@ -45,6 +46,19 @@ public class RoomController {
 		}
 		
 		return room;
+	}
+	
+	public Room addUserToRoom(String roomId, String userId) {
+		Room room = RoomStore.getInstance().getRoom(roomId);
+		User user = new User(userId, "Anonymous", room.getMaxVotes(), room.getMaxVetos(), room.getMaxNominations());
+		room.addUser(userId, user);
+		
+		return room;
+	}
+	
+	public void removeUserFromRoom(String roomId, String userId) {
+		Room room = RoomStore.getInstance().getRoom(roomId);
+		room.removeUser(userId);
 	}
 
 }

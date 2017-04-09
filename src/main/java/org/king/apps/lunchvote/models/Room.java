@@ -16,6 +16,10 @@ public class Room {
 	
 	public Room() {
 		super();
+		this.name = "Default Room";
+		this.maxVotes = 2;
+		this.maxVetos = 1;
+		this.maxNominations = 2;
 		this.roomState = RoomState.Ready;
 		this.users = new HashMap<>();
 		this.votables = new HashMap<>();
@@ -88,6 +92,10 @@ public class Room {
 	public void addUser(String id, User user) {
 		this.users.put(id, user);
 	}
+	
+	public void removeUser(String id) {
+		this.users.remove(id);
+	}
 
 	public Map<String, Votable> getVotables() {
 		return votables;
@@ -95,6 +103,10 @@ public class Room {
 
 	public void addVotable(String id, Votable votable) {
 		this.votables.put(id, votable);
+	}
+	
+	public void removeVotable(String id) {
+		this.votables.remove(id);
 	}
 
 	@Override
