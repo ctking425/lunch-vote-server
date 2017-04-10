@@ -12,11 +12,13 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
+import org.apache.cxf.rs.security.cors.CrossOriginResourceSharing;
 import org.king.apps.lunchvote.controllers.RoomController;
 import org.king.apps.lunchvote.models.Room;
 import org.springframework.stereotype.Service;
 
 @Service("RoomService")
+@CrossOriginResourceSharing(allowAllOrigins = true)
 @Path("/room")
 @Consumes("application/json")
 @Produces("application/json")
@@ -39,7 +41,7 @@ public class RoomService {
 		
 		UriBuilder builder = uriInfo.getAbsolutePathBuilder();
         builder.path(id);
-        return Response.created(builder.build()).entity(id).build();
+        return Response.created(builder.build()).entity("{\"roomId\": \""+id+"\"}").build();
 		
 	}
 	

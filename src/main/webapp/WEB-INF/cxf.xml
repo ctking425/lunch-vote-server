@@ -22,6 +22,7 @@
 			<cxf:logging />
 		</jaxrs:features>
 		<jaxrs:providers>
+			<bean class="org.apache.cxf.rs.security.cors.CrossOriginResourceSharingFilter" />
 			<bean class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider" />
 		</jaxrs:providers>
 	</jaxrs:server>

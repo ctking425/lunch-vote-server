@@ -2,7 +2,9 @@ package org.king.apps.lunchvote.sockets;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import javax.websocket.OnClose;
@@ -25,7 +27,7 @@ public class RoomSocket {
 	private static final String VOTE_ADD = "VOTE";
 	private static final String VETO_ADD = "VETO";
 	
-	private static Set<Session> sessions = Collections.synchronizedSet(new HashSet<>());
+	public static Map<String, Set<Session>> sessions = Collections.synchronizedMap(new HashMap<String, Set<Session>>());
 	
 	private RoomController roomCtrl;
 	
@@ -37,7 +39,17 @@ public class RoomSocket {
 	@OnOpen
 	public void onOpen(@PathParam("roomId") String roomId, Session s) throws IOException {
 		System.out.println("Adding session: "+s.getId());
-		sessions.add(s);
+		
+		Set<Session> sessionSet = sessions.get(roomId);
+		
+		if(sessionSet == null) {
+			sessionSet = new HashSet<Session>();
+			sessions.put(roomId, sessionSet);
+		}
+		
+		sessionSet.add(s);
+		
+		System.out.println("Size for room: "+roomId+" : "+sessionSet.size());
 		
 		System.out.println("Opening for room: "+roomId);
 		
@@ -51,7 +63,7 @@ public class RoomSocket {
 	@OnClose
 	public void onClose(@PathParam("roomId") String roomId, Session s) {
 		System.out.println("Removing session: "+s.getId());
-		sessions.remove(s);
+		sessions.get(roomId).remove(s);
 		roomCtrl.removeUserFromRoom(roomId, s.getId());
 	}
 	
@@ -62,7 +74,7 @@ public class RoomSocket {
 		
 		System.out.println(data.getType());
 		
-		for(Session session : sessions) {
+		for(Session session : sessions.get(roomId)) {
 			session.getBasicRemote().sendText("{\"from\":\""+s.getId()+"\", \"data\":\""+message+"\"");
 		}
 	}
