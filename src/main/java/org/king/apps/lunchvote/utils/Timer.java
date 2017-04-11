@@ -2,6 +2,7 @@ package org.king.apps.lunchvote.utils;
 
 import javax.websocket.Session;
 
+import org.king.apps.lunchvote.models.Data;
 import org.king.apps.lunchvote.sockets.TimerSocket;
 
 public class Timer implements Runnable {
@@ -19,12 +20,12 @@ public class Timer implements Runnable {
 		while(current >= 0) {
 			try {
 				
-				String t = String.format("{\"data\":\"%d:%02d\"}", (current/60), (current%60));
+				Data d = new Data(String.format("%d:%02d", (current/60), (current%60)));
 				
-				System.out.println(roomId+" countdown: "+t);
+				System.out.println(roomId+" countdown: "+d);
 				
 				for(Session s : TimerSocket.sessions.get(roomId)) {
-					if(s.isOpen()) s.getBasicRemote().sendText(t);
+					if(s.isOpen()) s.getBasicRemote().sendText(Serializer.toJson(d));
 				}
 				current--;
 				Thread.sleep(1000);
