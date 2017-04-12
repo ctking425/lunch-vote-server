@@ -25,7 +25,6 @@ public class TimerSocket {
 	
 	@OnOpen
 	public void onOpen(@PathParam("roomId") String roomId, Session s) throws IOException {
-		System.out.println("Adding session: "+s.getId());
 		
 		Set<Session> sessionSet = sessions.get(roomId);
 		
@@ -41,8 +40,6 @@ public class TimerSocket {
 			new Thread(t).start();
 			timers.put(roomId, t);
 		}
-		
-		System.out.println("Size for room: "+roomId+" : "+sessionSet.size());
 	}
 	
 	@OnClose

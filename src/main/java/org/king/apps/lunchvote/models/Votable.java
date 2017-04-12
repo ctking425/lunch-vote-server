@@ -13,6 +13,8 @@ public class Votable {
 		this.id = id;
 		this.name = name;
 		this.description = description;
+		this.votes = 0;
+		this.vetos = 0;
 	}
 	
 	public String getId() {
@@ -43,15 +45,15 @@ public class Votable {
 		return votes;
 	}
 	
-	public void setVotes(int votes) {
-		this.votes = votes;
+	public void addVote() {
+		this.votes++;
 	}
 	
 	public int getVetos() {
 		return vetos;
 	}
 	
-	public void setVetos(int vetos) {
-		this.vetos = vetos;
+	public void addVeto() {
+		this.vetos++;
 	}
 }

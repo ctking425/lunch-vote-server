@@ -112,7 +112,8 @@ public class Room {
 	@Override
 	public String toString() {
 		return "Room [id=" + id + ", name=" + name + ", maxVotes=" + maxVotes + ", maxVetos=" + maxVetos
-				+ ", maxNominations=" + maxNominations + ", roomState=" + roomState + "]";
+				+ ", maxNominations=" + maxNominations + ", roomState=" + roomState + ", users=" + users + ", votables="
+				+ votables + "]";
 	}
 
 }

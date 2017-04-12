@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.king.apps.lunchvote.models.Room;
 import org.king.apps.lunchvote.models.User;
+import org.king.apps.lunchvote.models.Votable;
 import org.king.apps.lunchvote.singletons.RoomStore;
 
 public class RoomController {
@@ -59,6 +60,14 @@ public class RoomController {
 	public void removeUserFromRoom(String roomId, String userId) {
 		Room room = RoomStore.getInstance().getRoom(roomId);
 		room.removeUser(userId);
+	}
+	
+	public Votable addNomination(String roomId, String nomName, String nomDesc) {
+		Room room = RoomStore.getInstance().getRoom(roomId);
+		String vId = UUID.randomUUID().toString();
+		Votable nomination = new Votable(vId, nomName, nomDesc);
+		room.addVotable(vId, nomination);
+		return nomination;
 	}
 
 }

@@ -22,8 +22,6 @@ public class Timer implements Runnable {
 				
 				Data d = new Data(String.format("%d:%02d", (current/60), (current%60)));
 				
-				System.out.println(roomId+" countdown: "+d);
-				
 				for(Session s : TimerSocket.sessions.get(roomId)) {
 					if(s.isOpen()) s.getBasicRemote().sendText(Serializer.toJson(d));
 				}

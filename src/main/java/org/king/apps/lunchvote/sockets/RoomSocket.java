@@ -17,7 +17,11 @@ import javax.websocket.server.ServerEndpoint;
 
 import org.king.apps.lunchvote.controllers.RoomController;
 import org.king.apps.lunchvote.models.Room;
+import org.king.apps.lunchvote.models.Votable;
 import org.king.apps.lunchvote.utils.Serializer;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 @ServerEndpoint("/socket/room/{roomId}")
 public class RoomSocket {
@@ -43,20 +47,16 @@ public class RoomSocket {
 		Set<Session> sessionSet = sessions.get(roomId);
 		
 		if(sessionSet == null) {
-			sessionSet = new HashSet<Session>();
+			sessionSet = Collections.synchronizedSet(new HashSet<Session>());
 			sessions.put(roomId, sessionSet);
 		}
 		
 		sessionSet.add(s);
 		
-		System.out.println("Size for room: "+roomId+" : "+sessionSet.size());
-		
-		System.out.println("Opening for room: "+roomId);
-		
 		//Need to add the user to the room, need to send the current room data to the client
 		Room room = roomCtrl.addUserToRoom(roomId, s.getId());
 		String out = Serializer.toJson(new Message<Room>(ROOM_INIT, room));
-		
+		System.out.println("Room Out: "+out);
 		s.getBasicRemote().sendText(out);
 	}
 	
@@ -68,14 +68,21 @@ public class RoomSocket {
 	}
 	
 	@OnMessage
-	public void onMessage(@PathParam("roomId") String roomId, String message, Session s) throws IOException{
-		System.out.println("Message recieved from: "+s.getId());
-		Message<String> data = Serializer.fromJson(message, Message.class);
+	public void onMessage(@PathParam("roomId") String roomId, String message, Session s) throws IOException {
+		System.out.println("Message recieved from: "+s.getId()+"\n"+message.toString());
+		JsonObject obj = new JsonParser().parse(message).getAsJsonObject();
 		
-		System.out.println(data.getType());
+		String msgType = obj.get("type").getAsString();
 		
-		for(Session session : sessions.get(roomId)) {
-			session.getBasicRemote().sendText("{\"from\":\""+s.getId()+"\", \"data\":\""+message+"\"");
+		switch(msgType) {
+		case NOM_ADD:
+			String nomName = obj.get("data").getAsJsonObject().get("name").getAsString();
+			String nomDesc = obj.get("data").getAsJsonObject().get("description").getAsString();
+			Votable nomination = roomCtrl.addNomination(roomId, nomName, nomDesc);
+			sendToAll(roomId, new Message<Votable>(NOM_ADD, nomination));
+			break;
+		default:
+			break;
 		}
 	}
 
@@ -83,6 +90,12 @@ public class RoomSocket {
 	public void onError(Session s, Throwable e){
 		System.out.println("Error occurred: "+s.getId());
 		e.printStackTrace();
+	}
+	
+	private void sendToAll(String roomId, Message<?> message) throws IOException {
+		for(Session s : sessions.get(roomId)) {
+			if(s.isOpen()) s.getBasicRemote().sendText(Serializer.toJson(message));
+		}
 	}
 	
 	class Message<T> {
