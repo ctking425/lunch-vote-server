@@ -1,7 +1,7 @@
 package org.king.apps.lunchvote.models;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Room {
 	
@@ -11,8 +11,8 @@ public class Room {
 	private int maxVetos;
 	private int maxNominations;
 	private RoomState roomState;
-	private Map<String, User> users;
-	private Map<String, Votable> votables;
+	private List<User> users;
+	private List<Votable> votables;
 	
 	public Room() {
 		super();
@@ -21,8 +21,8 @@ public class Room {
 		this.maxVetos = 1;
 		this.maxNominations = 2;
 		this.roomState = RoomState.Ready;
-		this.users = new HashMap<>();
-		this.votables = new HashMap<>();
+		this.users = new ArrayList<>();
+		this.votables = new ArrayList<>();
 	}
 	
 	public Room(String id, String name, int maxVotes, int maxVetos, int maxNominations) {
@@ -33,8 +33,8 @@ public class Room {
 		this.maxVetos = maxVetos;
 		this.maxNominations = maxNominations;
 		this.roomState = RoomState.Ready;
-		this.users = new HashMap<>();
-		this.votables = new HashMap<>();
+		this.users = new ArrayList<>();
+		this.votables = new ArrayList<>();
 	}
 
 	public String getId() {
@@ -84,29 +84,55 @@ public class Room {
 	public void setRoomState(RoomState roomState) {
 		this.roomState = roomState;
 	}
+	
+	public User findUser(String userId) {
+		for(User u : this.users) {
+			if(u.getId().equals(userId)) {
+				return u;
+			}
+		}
+		return null;
+	}
 
-	public Map<String, User> getUsers() {
+	public List<User> getUsers() {
 		return users;
 	}
 
-	public void addUser(String id, User user) {
-		this.users.put(id, user);
+	public void addUser(User user) {
+		this.users.add(user);
 	}
 	
-	public void removeUser(String id) {
-		this.users.remove(id);
+	public void removeUser(String userId) {
+		boolean found = false;
+		int i;
+		for(i=0; i<this.users.size(); i++) {
+			if(this.users.get(i).getId().equals(userId)) {
+				found = true;
+				break;
+			}
+		}
+		if(found) this.users.remove(i);
+	}
+	
+	public Votable findVotable(String votableId) {
+		for(Votable v : this.votables) {
+			if(v.getId().equals(votableId)){
+				return v;
+			}
+		}
+		return null;
 	}
 
-	public Map<String, Votable> getVotables() {
+	public List<Votable> getVotables() {
 		return votables;
 	}
 
-	public void addVotable(String id, Votable votable) {
-		this.votables.put(id, votable);
+	public void addVotable(Votable votable) {
+		this.votables.add(votable);
 	}
 	
-	public void removeVotable(String id) {
-		this.votables.remove(id);
+	public void removeVotable(Votable votable) {
+		this.votables.remove(votable);
 	}
 
 	@Override

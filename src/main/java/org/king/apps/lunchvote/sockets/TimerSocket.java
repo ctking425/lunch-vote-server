@@ -14,14 +14,10 @@ import javax.websocket.Session;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 
-import org.king.apps.lunchvote.utils.Timer;
-
 @ServerEndpoint("/socket/timer/{roomId}")
 public class TimerSocket {
 	
 	public static Map<String, Set<Session>> sessions = Collections.synchronizedMap(new HashMap<String, Set<Session>>());
-	private static Map<String, Timer> timers = Collections.synchronizedMap(new HashMap<String, Timer>());
-	
 	
 	@OnOpen
 	public void onOpen(@PathParam("roomId") String roomId, Session s) throws IOException {
@@ -34,17 +30,11 @@ public class TimerSocket {
 		}
 		
 		sessionSet.add(s);
-		
-		if(!timers.containsKey(roomId)) {
-			Timer t = new Timer(roomId);
-			new Thread(t).start();
-			timers.put(roomId, t);
-		}
 	}
 	
 	@OnClose
 	public void onClose(@PathParam("roomId") String roomId, Session s) {
-		
+		sessions.get(roomId).remove(s);
 	}
 	
 	@OnError

@@ -41,6 +41,10 @@ public class User {
 		this.votes = votes;
 	}
 	
+	public void useVote() {
+		if(this.votes > 0) this.votes--;
+	}
+	
 	public int getVetos() {
 		return vetos;
 	}
@@ -49,12 +53,20 @@ public class User {
 		this.vetos = vetos;
 	}
 	
+	public void useVeto() {
+		if(this.vetos > 0) this.vetos--;
+	}
+	
 	public int getNominations() {
 		return nominations;
 	}
 	
 	public void setNominations(int nominations) {
 		this.nominations = nominations;
+	}
+	
+	public void useNomination() {
+		if(this.nominations > 0) this.nominations--;
 	}
 
 }

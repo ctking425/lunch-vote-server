@@ -16,6 +16,7 @@ import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 
 import org.king.apps.lunchvote.controllers.RoomController;
+import org.king.apps.lunchvote.models.Message;
 import org.king.apps.lunchvote.models.Room;
 import org.king.apps.lunchvote.models.Votable;
 import org.king.apps.lunchvote.utils.Serializer;
@@ -26,10 +27,14 @@ import com.google.gson.JsonParser;
 @ServerEndpoint("/socket/room/{roomId}")
 public class RoomSocket {
 	
-	private static final String ROOM_INIT = "ROOM_INIT";
-	private static final String NOM_ADD = "NOMINATION";
-	private static final String VOTE_ADD = "VOTE";
-	private static final String VETO_ADD = "VETO";
+	public static final String TYPE = "type";
+	public static final String DATA = "data";
+	
+	public static final String ROOM_INIT = "ROOM_INIT";
+	public static final String ROOM_STATE = "ROOM_STATE";
+	public static final String NOM_ADD = "NOMINATION";
+	public static final String VOTE_ADD = "VOTE";
+	public static final String VETO_ADD = "VETO";
 	
 	public static Map<String, Set<Session>> sessions = Collections.synchronizedMap(new HashMap<String, Set<Session>>());
 	
@@ -72,14 +77,22 @@ public class RoomSocket {
 		System.out.println("Message recieved from: "+s.getId()+"\n"+message.toString());
 		JsonObject obj = new JsonParser().parse(message).getAsJsonObject();
 		
-		String msgType = obj.get("type").getAsString();
+		String msgType = obj.get(TYPE).getAsString();
 		
 		switch(msgType) {
 		case NOM_ADD:
-			String nomName = obj.get("data").getAsJsonObject().get("name").getAsString();
-			String nomDesc = obj.get("data").getAsJsonObject().get("description").getAsString();
+			String nomName = obj.get(DATA).getAsJsonObject().get("name").getAsString();
+			String nomDesc = obj.get(DATA).getAsJsonObject().get("description").getAsString();
 			Votable nomination = roomCtrl.addNomination(roomId, nomName, nomDesc);
 			sendToAll(roomId, new Message<Votable>(NOM_ADD, nomination));
+			break;
+		case VOTE_ADD:
+			String vId = obj.get(DATA).getAsString();
+			boolean success = roomCtrl.vote(roomId, s.getId(), vId);
+			if(success) {
+				System.out.println("Successful Vote");
+				sendToAll(roomId, new Message<String>(VOTE_ADD, vId));
+			}
 			break;
 		default:
 			break;
@@ -89,44 +102,11 @@ public class RoomSocket {
 	@OnError
 	public void onError(Session s, Throwable e){
 		System.out.println("Error occurred: "+s.getId());
-		e.printStackTrace();
 	}
 	
-	private void sendToAll(String roomId, Message<?> message) throws IOException {
+	public static void sendToAll(String roomId, Message<?> message) throws IOException {
 		for(Session s : sessions.get(roomId)) {
 			if(s.isOpen()) s.getBasicRemote().sendText(Serializer.toJson(message));
 		}
 	}
-	
-	class Message<T> {
-		private String type;
-		private T data;
-		
-		public Message() {
-			super();
-		}
-		
-		public Message(String type, T data) {
-			super();
-			this.type = type;
-			this.data = data;
-		}
-		
-		public String getType() {
-			return type;
-		}
-		
-		public void setType(String type) {
-			this.type = type;
-		}
-		
-		public T getData() {
-			return data;
-		}
-		
-		public void setData(T data) {
-			this.data = data;
-		}
-	}
-
 }
