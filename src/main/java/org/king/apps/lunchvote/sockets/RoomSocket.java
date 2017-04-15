@@ -16,6 +16,7 @@ import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 
 import org.king.apps.lunchvote.controllers.RoomController;
+import org.king.apps.lunchvote.exception.RoomNotFoundException;
 import org.king.apps.lunchvote.models.Message;
 import org.king.apps.lunchvote.models.Room;
 import org.king.apps.lunchvote.models.Votable;
@@ -58,52 +59,76 @@ public class RoomSocket {
 		
 		sessionSet.add(s);
 		
-		//Need to add the user to the room, need to send the current room data to the client
-		Room room = roomCtrl.addUserToRoom(roomId, s.getId());
-		String out = Serializer.toJson(new Message<Room>(ROOM_INIT, room));
-		System.out.println("Room Out: "+out);
-		s.getBasicRemote().sendText(out);
+		Room room;
+		try {
+			room = roomCtrl.getRoom(roomId);
+			String out = Serializer.toJson(new Message<Room>(ROOM_INIT, room));
+			System.out.println("Room Out: "+out);
+			s.getBasicRemote().sendText(out);
+		} catch (RoomNotFoundException e) {
+			e.printStackTrace();
+		}
+		
 	}
 	
 	@OnClose
 	public void onClose(@PathParam("roomId") String roomId, Session s) {
 		System.out.println("Removing session: "+s.getId());
 		if(sessions.containsKey(roomId)) sessions.get(roomId).remove(s);
-		roomCtrl.removeUserFromRoom(roomId, s.getId());
+		roomCtrl.removeRoom(roomId);
 	}
 	
 	@OnMessage
 	public void onMessage(@PathParam("roomId") String roomId, String message, Session s) throws IOException {
 		System.out.println("Message recieved from: "+s.getId()+"\n"+message.toString());
-		JsonObject obj = new JsonParser().parse(message).getAsJsonObject();
 		
+		if(!s.getQueryString().startsWith("key=")) {
+			return;
+		}
+		
+		String userKey = s.getQueryString().substring(4);
+		System.out.println(userKey);
+		
+		JsonObject obj = new JsonParser().parse(message).getAsJsonObject();
 		String msgType = obj.get(TYPE).getAsString();
 		
-		switch(msgType) {
-		case NOM_ADD:
-			String nomName = obj.get(DATA).getAsJsonObject().get("name").getAsString();
-			String nomDesc = obj.get(DATA).getAsJsonObject().get("description").getAsString();
-			Votable nomination = roomCtrl.addNomination(roomId, nomName, nomDesc);
-			sendToAll(roomId, new Message<Votable>(NOM_ADD, nomination));
-			break;
-		case VOTE_ADD:
-			String voteId = obj.get(DATA).getAsString();
-			boolean successVote = roomCtrl.vote(roomId, s.getId(), voteId);
-			if(successVote) {
-				System.out.println("Successful Vote");
-				sendToAll(roomId, new Message<String>(VOTE_ADD, voteId));
+		try {
+			switch(msgType) {
+			case NOM_ADD:
+				String nomName = obj.get(DATA).getAsJsonObject().get("name").getAsString();
+				String nomDesc = obj.get(DATA).getAsJsonObject().get("description").getAsString();
+				Votable nomination = roomCtrl.addNomination(roomId, userKey, nomName, nomDesc);
+				if(nomination != null) {
+					sendToAll(roomId, new Message<Votable>(NOM_ADD, nomination));
+				} else {
+					System.out.println("Nomination Failed");
+				}
+				break;
+			case VOTE_ADD:
+				String voteId = obj.get(DATA).getAsString();
+				boolean successVote = roomCtrl.vote(roomId, userKey, voteId);
+				if(successVote) {
+					System.out.println("Successful Vote");
+					sendToAll(roomId, new Message<String>(VOTE_ADD, voteId));
+				} else {
+					System.out.println("Vote Failed");
+				}
+				break;
+			case VETO_ADD:
+				String vetoId = obj.get(DATA).getAsString();
+				boolean successVeto = roomCtrl.veto(roomId, userKey, vetoId);
+				if(successVeto) {
+					System.out.println("Successful Veto");
+					sendToAll(roomId, new Message<String>(VETO_ADD, vetoId));
+				} else {
+					System.out.println("Veto Failed");
+				}
+				break;
+			default:
+				break;
 			}
-			break;
-		case VETO_ADD:
-			String vetoId = obj.get(DATA).getAsString();
-			boolean successVeto = roomCtrl.veto(roomId, s.getId(), vetoId);
-			if(successVeto) {
-				System.out.println("Successful Vetp");
-				sendToAll(roomId, new Message<String>(VETO_ADD, vetoId));
-			}
-			break;
-		default:
-			break;
+		} catch(RoomNotFoundException e) {
+			System.out.println(e.getMessage());
 		}
 	}
 
@@ -113,8 +138,17 @@ public class RoomSocket {
 	}
 	
 	public static void sendToAll(String roomId, Message<?> message) throws IOException {
-		for(Session s : sessions.get(roomId)) {
-			if(s.isOpen()) s.getBasicRemote().sendText(Serializer.toJson(message));
+		if(sessions.containsKey(roomId)) {
+			for(Session s : sessions.get(roomId)) {
+				if(s.isOpen()) s.getBasicRemote().sendText(Serializer.toJson(message));
+			}
 		}
+	}
+	
+	public static boolean isRoomEmpty(String roomId) {
+		if(sessions.containsKey(roomId)) {
+			return sessions.get(roomId).isEmpty();
+		}
+		return true;
 	}
 }

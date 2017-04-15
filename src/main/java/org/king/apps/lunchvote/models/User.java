@@ -68,5 +68,9 @@ public class User {
 	public void useNomination() {
 		if(this.nominations > 0) this.nominations--;
 	}
+	
+	public User clone() {
+		return new User(id, name, votes, vetos, nominations);
+	}
 
 }

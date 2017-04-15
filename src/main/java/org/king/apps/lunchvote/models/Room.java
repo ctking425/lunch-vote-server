@@ -14,7 +14,6 @@ public class Room {
 	private int readyTime;
 	private int nominationTime;
 	private int votingTime;
-	private List<User> users;
 	private List<Votable> votables;
 	
 	public Room() {
@@ -27,7 +26,6 @@ public class Room {
 		this.readyTime = 30;
 		this.nominationTime = 300;
 		this.votingTime = 300;
-		this.users = new ArrayList<>();
 		this.votables = new ArrayList<>();
 	}
 	
@@ -42,7 +40,6 @@ public class Room {
 		this.readyTime = 30;
 		this.nominationTime = 300;
 		this.votingTime = 300;
-		this.users = new ArrayList<>();
 		this.votables = new ArrayList<>();
 	}
 	
@@ -57,7 +54,6 @@ public class Room {
 		this.readyTime = readyTime;
 		this.nominationTime = nominationTime;
 		this.votingTime = votingTime;
-		this.users = new ArrayList<>();
 		this.votables = new ArrayList<>();
 	}
 
@@ -132,35 +128,6 @@ public class Room {
 	public void setVotingTime(int votingTime) {
 		this.votingTime = votingTime;
 	}
-
-	public User findUser(String userId) {
-		for(User u : this.users) {
-			if(u.getId().equals(userId)) {
-				return u;
-			}
-		}
-		return null;
-	}
-
-	public List<User> getUsers() {
-		return users;
-	}
-
-	public void addUser(User user) {
-		this.users.add(user);
-	}
-	
-	public void removeUser(String userId) {
-		boolean found = false;
-		int i;
-		for(i=0; i<this.users.size(); i++) {
-			if(this.users.get(i).getId().equals(userId)) {
-				found = true;
-				break;
-			}
-		}
-		if(found) this.users.remove(i);
-	}
 	
 	public Votable findVotable(String votableId) {
 		for(Votable v : this.votables) {
@@ -186,8 +153,7 @@ public class Room {
 	@Override
 	public String toString() {
 		return "Room [id=" + id + ", name=" + name + ", maxVotes=" + maxVotes + ", maxVetos=" + maxVetos
-				+ ", maxNominations=" + maxNominations + ", roomState=" + roomState + ", users=" + users + ", votables="
-				+ votables + "]";
+				+ ", maxNominations=" + maxNominations + ", roomState=" + roomState + ", readyTime=" + readyTime
+				+ ", nominationTime=" + nominationTime + ", votingTime=" + votingTime + ", votables=" + votables + "]";
 	}
-
 }

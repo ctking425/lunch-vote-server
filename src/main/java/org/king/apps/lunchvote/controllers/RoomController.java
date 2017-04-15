@@ -5,13 +5,16 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 
+import org.king.apps.lunchvote.exception.RoomNotFoundException;
 import org.king.apps.lunchvote.models.Message;
 import org.king.apps.lunchvote.models.Room;
 import org.king.apps.lunchvote.models.RoomState;
 import org.king.apps.lunchvote.models.User;
 import org.king.apps.lunchvote.models.Votable;
+import org.king.apps.lunchvote.singletons.CryptService;
 import org.king.apps.lunchvote.singletons.RoomStore;
 import org.king.apps.lunchvote.singletons.TimerManager;
+import org.king.apps.lunchvote.singletons.UserStore;
 import org.king.apps.lunchvote.sockets.RoomSocket;
 import org.king.apps.lunchvote.sockets.TimerSocket;
 
@@ -41,42 +44,38 @@ public class RoomController {
 		return id;
 	}
 	
-	public Room getRoom(String id) {
-		System.out.println(id);
-		Room room = RoomStore.getInstance().getRoom(id);
+	public Room getRoom(String roomId) throws RoomNotFoundException {
+		Room room = RoomStore.getInstance().getRoom(roomId);
 		
 		if(room == null) {
-			System.out.println("Could not find room");
-		} else {
-			System.out.println(room.getName());
+			throw new RoomNotFoundException();
 		}
 		
 		return room;
 	}
 	
-	public Room addUserToRoom(String roomId, String userId) {
+	public User addUserToRoom(String roomId, String address) throws RoomNotFoundException {
 		Room room = RoomStore.getInstance().getRoom(roomId);
-		User user = new User(userId, "Anonymous", room.getMaxVotes(), room.getMaxVetos(), room.getMaxNominations());
-		room.addUser(user);
 		
-		return room;
-	}
-	
-	public void removeUserFromRoom(String roomId, String userId) {
-		Room room = RoomStore.getInstance().getRoom(roomId);
-		if(room != null) {
-			room.removeUser(userId);
-			if(room.getRoomState().equals(RoomState.Complete) && room.getUsers().isEmpty()) {
-				removeRoom(roomId);
-			}
+		if(room == null) {
+			throw new RoomNotFoundException("Could not find room with id: "+roomId);
 		}
-	}
-	
-	public Votable addNomination(String roomId, String nomName, String nomDesc) {
-		Room room = RoomStore.getInstance().getRoom(roomId);
-		Votable nomination = new Votable(UUID.randomUUID().toString(), nomName, nomDesc);
-		room.addVotable(nomination);
-		return nomination;
+		
+		String userId = CryptService.getInstance().hash(address);
+		
+		User user = UserStore.getInstance().findUser(roomId, userId);
+		
+		if(user == null) {
+			//This user hasn't joined the room before, create a new user
+			user = new User(userId, "Anonymous", room.getMaxVotes(), room.getMaxVetos(), room.getMaxNominations());
+			UserStore.getInstance().addUser(roomId, user);
+		}
+		
+		//The client is going to receive the encrypted version of their id to prevent spoofing.
+		User clone = user.clone();
+		clone.setId(CryptService.getInstance().encrypt(user.getId()));
+		
+		return clone;
 	}
 	
 	public void readyRoom(String roomId) {
@@ -110,22 +109,46 @@ public class RoomController {
 			room.setRoomState(RoomState.Complete);
 			TimerManager.getInstance().removeTimer(roomId);
 			RoomSocket.sendToAll(roomId, new Message<RoomState>(RoomSocket.ROOM_STATE, RoomState.Complete));
-			if(room.getUsers().isEmpty()) {
-				removeRoom(roomId);
-			}
+			removeRoom(roomId);
 		}
 	}
 	
-	private void removeRoom(String roomId) {
-		System.out.println("Removing room: "+roomId);
-		RoomSocket.sessions.remove(roomId);
-		TimerSocket.sessions.remove(roomId);
-		RoomStore.getInstance().removeRoom(roomId);
+	public void removeRoom(String roomId) {
+		Room room = RoomStore.getInstance().getRoom(roomId);
+		if(room.getRoomState() == RoomState.Complete && RoomSocket.isRoomEmpty(roomId)) {
+			System.out.println("Removing room: "+roomId);
+			RoomSocket.sessions.remove(roomId);
+			TimerSocket.sessions.remove(roomId);
+			UserStore.getInstance().removeRoom(roomId);
+			RoomStore.getInstance().removeRoom(roomId);
+		}
 	}
 	
-	public boolean vote(String roomId, String userId, String votableId) {
+	public Votable addNomination(String roomId, String userId, String nomName, String nomDesc) throws RoomNotFoundException {
 		Room room = RoomStore.getInstance().getRoom(roomId);
-		User u = room.findUser(userId);
+		User u = UserStore.getInstance().findUser(roomId, userId);
+		
+		if(u == null) {
+			System.out.println("Nom could not find user");
+			return null;
+		}
+		
+		if(u.getNominations() == 0) {
+			return null;
+		}
+		
+		Votable nomination = new Votable(UUID.randomUUID().toString(), nomName, nomDesc);
+		
+		u.useNomination();
+		
+		room.addVotable(nomination);
+		
+		return nomination;
+	}
+	
+	public boolean vote(String roomId, String userId, String votableId) throws RoomNotFoundException {
+		Room room = RoomStore.getInstance().getRoom(roomId);
+		User u = UserStore.getInstance().findUser(roomId, userId);
 		
 		if(u == null) {
 			return false;
@@ -147,9 +170,9 @@ public class RoomController {
 		return true;
 	}
 
-	public boolean veto(String roomId, String userId, String votableId) {
+	public boolean veto(String roomId, String userId, String votableId) throws RoomNotFoundException {
 		Room room = RoomStore.getInstance().getRoom(roomId);
-		User u = room.findUser(userId);
+		User u = UserStore.getInstance().findUser(roomId, userId);
 		
 		if(u == null) {
 			return false;
