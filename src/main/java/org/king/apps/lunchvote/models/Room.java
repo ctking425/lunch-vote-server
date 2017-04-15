@@ -11,6 +11,9 @@ public class Room {
 	private int maxVetos;
 	private int maxNominations;
 	private RoomState roomState;
+	private int readyTime;
+	private int nominationTime;
+	private int votingTime;
 	private List<User> users;
 	private List<Votable> votables;
 	
@@ -21,6 +24,9 @@ public class Room {
 		this.maxVetos = 1;
 		this.maxNominations = 2;
 		this.roomState = RoomState.Ready;
+		this.readyTime = 30;
+		this.nominationTime = 300;
+		this.votingTime = 300;
 		this.users = new ArrayList<>();
 		this.votables = new ArrayList<>();
 	}
@@ -33,6 +39,24 @@ public class Room {
 		this.maxVetos = maxVetos;
 		this.maxNominations = maxNominations;
 		this.roomState = RoomState.Ready;
+		this.readyTime = 30;
+		this.nominationTime = 300;
+		this.votingTime = 300;
+		this.users = new ArrayList<>();
+		this.votables = new ArrayList<>();
+	}
+	
+	public Room(String id, String name, int maxVotes, int maxVetos, int maxNominations, int readyTime, int nominationTime, int votingTime) {
+		super();
+		this.id = id;
+		this.name = name;
+		this.maxVotes = maxVotes;
+		this.maxVetos = maxVetos;
+		this.maxNominations = maxNominations;
+		this.roomState = RoomState.Ready;
+		this.readyTime = readyTime;
+		this.nominationTime = nominationTime;
+		this.votingTime = votingTime;
 		this.users = new ArrayList<>();
 		this.votables = new ArrayList<>();
 	}
@@ -85,6 +109,30 @@ public class Room {
 		this.roomState = roomState;
 	}
 	
+	public int getReadyTime() {
+		return readyTime;
+	}
+
+	public void setReadyTime(int readyTime) {
+		this.readyTime = readyTime;
+	}
+
+	public int getNominationTime() {
+		return nominationTime;
+	}
+
+	public void setNominationTime(int nominationTime) {
+		this.nominationTime = nominationTime;
+	}
+
+	public int getVotingTime() {
+		return votingTime;
+	}
+
+	public void setVotingTime(int votingTime) {
+		this.votingTime = votingTime;
+	}
+
 	public User findUser(String userId) {
 		for(User u : this.users) {
 			if(u.getId().equals(userId)) {

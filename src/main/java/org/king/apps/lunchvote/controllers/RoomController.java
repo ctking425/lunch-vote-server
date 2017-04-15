@@ -67,10 +67,7 @@ public class RoomController {
 		if(room != null) {
 			room.removeUser(userId);
 			if(room.getRoomState().equals(RoomState.Complete) && room.getUsers().isEmpty()) {
-				System.out.println("Removing room: "+roomId);
-				RoomStore.getInstance().removeRoom(roomId);
-				RoomSocket.sessions.remove(roomId);
-				TimerSocket.sessions.remove(roomId);
+				removeRoom(roomId);
 			}
 		}
 	}
@@ -83,7 +80,8 @@ public class RoomController {
 	}
 	
 	public void readyRoom(String roomId) {
-		TimerManager.getInstance().startTimer(roomId, 30, RoomState.Nominations);
+		Room room = RoomStore.getInstance().getRoom(roomId);
+		TimerManager.getInstance().startTimer(roomId, room.getReadyTime(), RoomState.Nominations);
 	}
 	
 	public void startNominations(String roomId) throws IOException {
@@ -91,7 +89,7 @@ public class RoomController {
 		if(room.getRoomState() == RoomState.Ready) {
 			room.setRoomState(RoomState.Nominations);
 			TimerManager.getInstance().removeTimer(roomId);
-			TimerManager.getInstance().startTimer(roomId, 180, RoomState.Voting);
+			TimerManager.getInstance().startTimer(roomId, room.getNominationTime(), RoomState.Voting);
 			RoomSocket.sendToAll(roomId, new Message<RoomState>(RoomSocket.ROOM_STATE, RoomState.Nominations));
 		}
 	}
@@ -101,7 +99,7 @@ public class RoomController {
 		if(room.getRoomState() == RoomState.Nominations) {
 			room.setRoomState(RoomState.Voting);
 			TimerManager.getInstance().removeTimer(roomId);
-			TimerManager.getInstance().startTimer(roomId, 240, RoomState.Complete);
+			TimerManager.getInstance().startTimer(roomId, room.getVotingTime(), RoomState.Complete);
 			RoomSocket.sendToAll(roomId, new Message<RoomState>(RoomSocket.ROOM_STATE, RoomState.Voting));
 		}
 	}
@@ -112,7 +110,17 @@ public class RoomController {
 			room.setRoomState(RoomState.Complete);
 			TimerManager.getInstance().removeTimer(roomId);
 			RoomSocket.sendToAll(roomId, new Message<RoomState>(RoomSocket.ROOM_STATE, RoomState.Complete));
+			if(room.getUsers().isEmpty()) {
+				removeRoom(roomId);
+			}
 		}
+	}
+	
+	private void removeRoom(String roomId) {
+		System.out.println("Removing room: "+roomId);
+		RoomSocket.sessions.remove(roomId);
+		TimerSocket.sessions.remove(roomId);
+		RoomStore.getInstance().removeRoom(roomId);
 	}
 	
 	public boolean vote(String roomId, String userId, String votableId) {
