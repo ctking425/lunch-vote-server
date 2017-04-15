@@ -68,7 +68,7 @@ public class RoomSocket {
 	@OnClose
 	public void onClose(@PathParam("roomId") String roomId, Session s) {
 		System.out.println("Removing session: "+s.getId());
-		sessions.get(roomId).remove(s);
+		if(sessions.containsKey(roomId)) sessions.get(roomId).remove(s);
 		roomCtrl.removeUserFromRoom(roomId, s.getId());
 	}
 	
@@ -87,11 +87,19 @@ public class RoomSocket {
 			sendToAll(roomId, new Message<Votable>(NOM_ADD, nomination));
 			break;
 		case VOTE_ADD:
-			String vId = obj.get(DATA).getAsString();
-			boolean success = roomCtrl.vote(roomId, s.getId(), vId);
-			if(success) {
+			String voteId = obj.get(DATA).getAsString();
+			boolean successVote = roomCtrl.vote(roomId, s.getId(), voteId);
+			if(successVote) {
 				System.out.println("Successful Vote");
-				sendToAll(roomId, new Message<String>(VOTE_ADD, vId));
+				sendToAll(roomId, new Message<String>(VOTE_ADD, voteId));
+			}
+			break;
+		case VETO_ADD:
+			String vetoId = obj.get(DATA).getAsString();
+			boolean successVeto = roomCtrl.veto(roomId, s.getId(), vetoId);
+			if(successVeto) {
+				System.out.println("Successful Vetp");
+				sendToAll(roomId, new Message<String>(VETO_ADD, vetoId));
 			}
 			break;
 		default:

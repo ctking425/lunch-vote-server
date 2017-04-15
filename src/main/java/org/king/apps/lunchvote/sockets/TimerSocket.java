@@ -34,7 +34,7 @@ public class TimerSocket {
 	
 	@OnClose
 	public void onClose(@PathParam("roomId") String roomId, Session s) {
-		sessions.get(roomId).remove(s);
+		if(sessions.containsKey(roomId)) sessions.get(roomId).remove(s);
 	}
 	
 	@OnError

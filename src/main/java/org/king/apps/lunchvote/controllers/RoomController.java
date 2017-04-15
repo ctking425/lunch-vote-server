@@ -13,6 +13,7 @@ import org.king.apps.lunchvote.models.Votable;
 import org.king.apps.lunchvote.singletons.RoomStore;
 import org.king.apps.lunchvote.singletons.TimerManager;
 import org.king.apps.lunchvote.sockets.RoomSocket;
+import org.king.apps.lunchvote.sockets.TimerSocket;
 
 public class RoomController {
 	
@@ -63,7 +64,15 @@ public class RoomController {
 	
 	public void removeUserFromRoom(String roomId, String userId) {
 		Room room = RoomStore.getInstance().getRoom(roomId);
-		room.removeUser(userId);
+		if(room != null) {
+			room.removeUser(userId);
+			if(room.getRoomState().equals(RoomState.Complete) && room.getUsers().isEmpty()) {
+				System.out.println("Removing room: "+roomId);
+				RoomStore.getInstance().removeRoom(roomId);
+				RoomSocket.sessions.remove(roomId);
+				TimerSocket.sessions.remove(roomId);
+			}
+		}
 	}
 	
 	public Votable addNomination(String roomId, String nomName, String nomDesc) {
@@ -82,7 +91,7 @@ public class RoomController {
 		if(room.getRoomState() == RoomState.Ready) {
 			room.setRoomState(RoomState.Nominations);
 			TimerManager.getInstance().removeTimer(roomId);
-			TimerManager.getInstance().startTimer(roomId, 60, RoomState.Voting);
+			TimerManager.getInstance().startTimer(roomId, 180, RoomState.Voting);
 			RoomSocket.sendToAll(roomId, new Message<RoomState>(RoomSocket.ROOM_STATE, RoomState.Nominations));
 		}
 	}
@@ -92,7 +101,7 @@ public class RoomController {
 		if(room.getRoomState() == RoomState.Nominations) {
 			room.setRoomState(RoomState.Voting);
 			TimerManager.getInstance().removeTimer(roomId);
-			TimerManager.getInstance().startTimer(roomId, 60, RoomState.Complete);
+			TimerManager.getInstance().startTimer(roomId, 240, RoomState.Complete);
 			RoomSocket.sendToAll(roomId, new Message<RoomState>(RoomSocket.ROOM_STATE, RoomState.Voting));
 		}
 	}
@@ -126,6 +135,30 @@ public class RoomController {
 		
 		u.useVote();
 		v.addVote();
+		
+		return true;
+	}
+
+	public boolean veto(String roomId, String userId, String votableId) {
+		Room room = RoomStore.getInstance().getRoom(roomId);
+		User u = room.findUser(userId);
+		
+		if(u == null) {
+			return false;
+		}
+		
+		if(u.getVetos() == 0) {
+			return false;
+		}
+		
+		Votable v = room.findVotable(votableId);
+		
+		if(v == null) {
+			return false;
+		}
+		
+		u.useVeto();
+		v.addVeto();
 		
 		return true;
 	}
