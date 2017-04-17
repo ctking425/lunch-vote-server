@@ -55,6 +55,8 @@ public class Timer implements Runnable {
 			case Complete:
 				roomCtrl.endVotes(roomId);
 				break;
+			default:
+				break;
 			}
 		} catch(Exception e) {
 			e.printStackTrace();
