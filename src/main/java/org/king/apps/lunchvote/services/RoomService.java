@@ -64,7 +64,7 @@ public class RoomService {
 	
 	@GET
 	@Path("/{id}/join")
-	public Response validateUser(@PathParam("id") String id, @Context HttpServletRequest req) {
+	public Response joinRoom(@PathParam("id") String id, @Context HttpServletRequest req) {
 		System.out.println("Join Room: "+id);
 		
 		try {

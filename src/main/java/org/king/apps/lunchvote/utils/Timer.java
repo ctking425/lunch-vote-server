@@ -1,10 +1,9 @@
 package org.king.apps.lunchvote.utils;
 
-import javax.websocket.Session;
-
 import org.king.apps.lunchvote.controllers.RoomController;
-import org.king.apps.lunchvote.models.Data;
+import org.king.apps.lunchvote.models.Message;
 import org.king.apps.lunchvote.models.RoomState;
+import org.king.apps.lunchvote.singletons.SessionManager;
 import org.king.apps.lunchvote.sockets.TimerSocket;
 
 public class Timer implements Runnable {
@@ -23,12 +22,10 @@ public class Timer implements Runnable {
 	public void run() {
 		int current = time;
 		while(current >= 0) {
-			Data d = new Data(String.format("%d:%02d", (current/60), (current%60)));
+			String time = String.format("%d:%02d", (current/60), (current%60));
 			
 			try {
-				for(Session s : TimerSocket.sessions.get(roomId)) {
-					if(s != null && s.isOpen()) s.getBasicRemote().sendText(Serializer.toJson(d));
-				}
+				SessionManager.getInstance().sendMessage(TimerSocket.SOCKET_NAME, roomId, new Message<String>("TIME", time));
 			} catch(Exception e) {
 				//Do Nothing
 			}

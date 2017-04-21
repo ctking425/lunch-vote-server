@@ -5,6 +5,8 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 
+import javax.websocket.Session;
+
 import org.king.apps.lunchvote.exception.RoomNotFoundException;
 import org.king.apps.lunchvote.models.Message;
 import org.king.apps.lunchvote.models.Room;
@@ -13,12 +15,26 @@ import org.king.apps.lunchvote.models.User;
 import org.king.apps.lunchvote.models.Votable;
 import org.king.apps.lunchvote.singletons.CryptService;
 import org.king.apps.lunchvote.singletons.RoomStore;
+import org.king.apps.lunchvote.singletons.SessionManager;
 import org.king.apps.lunchvote.singletons.TimerManager;
 import org.king.apps.lunchvote.singletons.UserStore;
 import org.king.apps.lunchvote.sockets.RoomSocket;
 import org.king.apps.lunchvote.sockets.TimerSocket;
+import org.king.apps.lunchvote.utils.Serializer;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class RoomController {
+	
+	public static final String TYPE = "type";
+	public static final String DATA = "data";
+	
+	public static final String ROOM_INIT = "ROOM_INIT";
+	public static final String ROOM_STATE = "ROOM_STATE";
+	public static final String NOM_ADD = "NOMINATION";
+	public static final String VOTE_ADD = "VOTE";
+	public static final String VETO_ADD = "VETO";
 	
 	public RoomController() {}
 	
@@ -78,6 +94,50 @@ public class RoomController {
 		return clone;
 	}
 	
+	public void sendRoomInitialization(String roomId, Session session) throws IOException {
+		Room room = RoomStore.getInstance().getRoom(roomId);
+		session.getBasicRemote().sendText(Serializer.toJson(new Message<Room>("ROOM_INIT", room)));
+	}
+	
+	public void processMessage(String roomId, String userKey, String message) throws IOException, RoomNotFoundException {
+		JsonObject obj = new JsonParser().parse(message).getAsJsonObject();
+		String msgType = obj.get(TYPE).getAsString();
+
+		switch(msgType) {
+		case NOM_ADD:
+			String nomName = obj.get(DATA).getAsJsonObject().get("name").getAsString();
+			String nomDesc = obj.get(DATA).getAsJsonObject().get("description").getAsString();
+			Votable nomination = this.addNomination(roomId, userKey, nomName, nomDesc);
+			if(nomination != null) {
+				SessionManager.getInstance().sendMessage(RoomSocket.SOCKET_NAME, roomId, new Message<Votable>(NOM_ADD, nomination));
+			} else {
+				System.out.println("Nomination Failed");
+			}
+			break;
+		case VOTE_ADD:
+			String voteId = obj.get(DATA).getAsString();
+			boolean successVote = this.vote(roomId, userKey, voteId);
+			if(successVote) {
+				System.out.println("Successful Vote");
+				SessionManager.getInstance().sendMessage(RoomSocket.SOCKET_NAME, roomId, new Message<String>(VOTE_ADD, voteId));
+				System.out.println("Vote Failed");
+			}
+			break;
+		case VETO_ADD:
+			String vetoId = obj.get(DATA).getAsString();
+			boolean successVeto = this.veto(roomId, userKey, vetoId);
+			if(successVeto) {
+				System.out.println("Successful Veto");
+				SessionManager.getInstance().sendMessage(RoomSocket.SOCKET_NAME, roomId, new Message<String>(VETO_ADD, vetoId));
+			} else {
+				System.out.println("Veto Failed");
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	
 	public void readyRoom(String roomId) {
 		Room room = RoomStore.getInstance().getRoom(roomId);
 		TimerManager.getInstance().startTimer(roomId, room.getReadyTime(), RoomState.Nominations);
@@ -89,7 +149,7 @@ public class RoomController {
 			room.setRoomState(RoomState.Nominations);
 			TimerManager.getInstance().removeTimer(roomId);
 			TimerManager.getInstance().startTimer(roomId, room.getNominationTime(), RoomState.Voting);
-			RoomSocket.sendToAll(roomId, new Message<RoomState>(RoomSocket.ROOM_STATE, RoomState.Nominations));
+			SessionManager.getInstance().sendMessage(RoomSocket.SOCKET_NAME, roomId, new Message<RoomState>(ROOM_STATE, RoomState.Nominations));
 		}
 	}
 	
@@ -99,7 +159,7 @@ public class RoomController {
 			room.setRoomState(RoomState.Voting);
 			TimerManager.getInstance().removeTimer(roomId);
 			TimerManager.getInstance().startTimer(roomId, room.getVotingTime(), RoomState.Complete);
-			RoomSocket.sendToAll(roomId, new Message<RoomState>(RoomSocket.ROOM_STATE, RoomState.Voting));
+			SessionManager.getInstance().sendMessage(RoomSocket.SOCKET_NAME, roomId, new Message<RoomState>(ROOM_STATE, RoomState.Voting));
 		}
 	}
 	
@@ -108,17 +168,17 @@ public class RoomController {
 		if(room.getRoomState() == RoomState.Voting) {
 			room.setRoomState(RoomState.Complete);
 			TimerManager.getInstance().removeTimer(roomId);
-			RoomSocket.sendToAll(roomId, new Message<RoomState>(RoomSocket.ROOM_STATE, RoomState.Complete));
+			SessionManager.getInstance().sendMessage(RoomSocket.SOCKET_NAME, roomId, new Message<RoomState>(ROOM_STATE, RoomState.Complete));
 			removeRoom(roomId);
 		}
 	}
 	
 	public void removeRoom(String roomId) {
 		Room room = RoomStore.getInstance().getRoom(roomId);
-		if(room.getRoomState() == RoomState.Complete && RoomSocket.isRoomEmpty(roomId)) {
+		if(room.getRoomState() == RoomState.Complete && SessionManager.getInstance().isEmpty(RoomSocket.SOCKET_NAME, roomId)) {
 			System.out.println("Removing room: "+roomId);
-			RoomSocket.sessions.remove(roomId);
-			TimerSocket.sessions.remove(roomId);
+			SessionManager.getInstance().removeSessions(RoomSocket.SOCKET_NAME, roomId);
+			SessionManager.getInstance().removeSessions(TimerSocket.SOCKET_NAME, roomId);
 			UserStore.getInstance().removeRoom(roomId);
 			RoomStore.getInstance().removeRoom(roomId);
 		}
